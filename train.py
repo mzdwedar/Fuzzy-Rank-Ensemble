@@ -3,6 +3,7 @@ import argparse
 from tensorflow.keras import optimizers
 import tensorflow as tf
 from sklearn.metrics import classification_report
+from keras.utils import np_utils
 
 from utils.model import DenseNet, Inception, Xception
 from utils.ensemble_utils import doFusion
@@ -25,8 +26,9 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size):
     n_val = len(dfVal)
     n_train = len(dfTrain)
 
-    train = tf.data.Dataset.from_tensor_slices(dfTrain.values)
-    val = tf.data.Dataset.from_tensor_slices(dfVal.values)
+    cols = ['path', 'class']
+    train = tf.data.Dataset.from_tensor_slices(dfTrain[cols].to_numpy())
+    val = tf.data.Dataset.from_tensor_slices(dfVal[cols].to_numpy())
 
     AUTOTUNE = tf.data.AUTOTUNE
     train_dataset = (train
@@ -45,8 +47,6 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size):
 
     steps_per_epoch = n_train // train_batch
     validation_steps = n_val // val_batch
-
-
 
     print()
     print('DenseNet-169:')
@@ -109,7 +109,8 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size):
     compute_metrics("InceptionV3", y_true_val, preds2)
     compute_metrics("Xception", y_true_val, preds3)
 
-    ensem_preds = doFusion(preds1, preds2, preds3, y_true_val, num_classes)
+    y_OHE = np_utils.to_categorical(y_true_val) # one hot encoded
+    ensem_preds = doFusion(preds1, preds2, preds3, y_OHE, num_classes)
 
     print('Ensembled:')
 

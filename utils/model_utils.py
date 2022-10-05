@@ -9,6 +9,7 @@ def save_model(model, model_name, history):
     model_saved_name = model_name + ".h5"
     model.save("saved_models/" + model_saved_name)
 
+    os.makedirs('csv_files', exist_ok=True)
     hist_df = pd.DataFrame(history.history) 
     hist_csv_file =  "history_" + model_name + ".csv"
     filepath = "csv_files/" + hist_csv_file 

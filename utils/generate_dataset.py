@@ -6,7 +6,7 @@ def kFold(df):
     
   df['kfold'] = -1
   df = df.reset_index(drop=True)
-  y = df[1]
+  y = df['class']
   kf = StratifiedKFold(n_splits=5)
   for f,(t_,v_) in enumerate(kf.split(X=df,y=y)):
     df.loc[v_,'kfold'] = f

@@ -6,7 +6,7 @@ from utils.model_utils import load_hdf5_model
 from utils.data_pipeline import *
 from utils.model_eval import predict
 from sklearn.metrics import classification_report, accuracy_score
-
+from keras.utils import np_utils
 import tensorflow as tf
 
 
@@ -22,7 +22,7 @@ def test(test_paths, batch_size):
     num_examples_test = len(test_paths)
     y_true = test_paths['class'].apply(encode_y).to_numpy()
     
-    test = tf.data.Dataset.from_tensor_slices(test_paths.values)
+    test = tf.data.Dataset.from_tensor_slices(test_paths.to_numpy())
 
     AUTOTUNE = tf.data.AUTOTUNE
     test_dataset = (test
@@ -39,10 +39,12 @@ def test(test_paths, batch_size):
     preds2 = predict(model2, test_dataset, num_examples_test, batch_size)
     preds3 = predict(model3, test_dataset, num_examples_test, batch_size)
 
-    predictedClass = doFusion(preds1, preds2, preds3, y_true, num_examples_test)
+    y_OHE = np_utils.to_categorical(y_true) # one hot encoded
+
+    predictedClass = doFusion(preds1, preds2, preds3, y_OHE, 6)
 
     print('Ensembled')
-
+    
     print('Accuracy score: ', accuracy_score(y_true, predictedClass))
     print(classification_report(y_true, predictedClass, digits=4))
 
@@ -52,7 +54,7 @@ if __name__ == '__main__':
  
     parser.add_argument('--path', type=str, default='./',
                         help='Path where the image data is stored')
-    parser.add_argument('--batch_size', type=int, default=16,
+    parser.add_argument('--batch_size', type=int, default=32,
                         help='Batch Size for Mini Batch')
     
     args = parser.parse_args()

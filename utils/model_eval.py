@@ -15,7 +15,6 @@ def compute_metrics(model_name, Y, preds):
   print(f'{model_name} Recall Score(Class wise): ',recall_score(Y, y_preds, average=None), " mean- " , sum(recall_score(Y, y_preds, average= None ))/n)
   print(f'{model_name} F1 Score(Class wise): ',f1_score(Y, y_preds, average=None), " mean- " , sum(f1_score(Y, y_preds, average= None))/n)
   print(f'{model_name} Conf Matrix Score(Class wise):\n ',confusion_matrix(Y, y_preds))    
-  print(f'{model_name} AUC ROC(Class wise): ',roc_auc_score(Y, y_preds, average= None, multi_class='ovo'), " mean- " , sum(roc_auc_score(Y, y_preds, average=None, multi_class='ovo'))/n)
 
 def predict(model, dataset, num_examples, batch_size):
   
