@@ -1,0 +1,6 @@
+tensorflow_addons
+numpy
+pandas
+tensorflow
+sklearn
+ 

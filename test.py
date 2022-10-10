@@ -6,7 +6,7 @@ from utils.model_utils import load_hdf5_model
 from utils.data_pipeline import *
 from utils.model_eval import predict
 from sklearn.metrics import classification_report, accuracy_score
-from keras.utils import np_utils
+from tensorflow.keras.utils import np_utils
 import tensorflow as tf
 
 

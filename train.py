@@ -4,6 +4,7 @@ from tensorflow.keras import optimizers
 import tensorflow as tf
 from sklearn.metrics import classification_report
 from keras.utils import np_utils
+from utils.metrics import *
 
 from utils.model import DenseNet, Inception, Xception
 from utils.ensemble_utils import doFusion
@@ -13,7 +14,7 @@ from utils.model_eval import predict, compute_metrics
 from utils.model_utils import save_model
 
 
-def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size):
+def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, metrics_list):
 
     print(f"---------------------------------------FOLD NO {i}----------------------------------")
     
@@ -54,7 +55,7 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size):
 
     model1 = DenseNet(input_size, num_classes)
     model1.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5), 
-                    loss='sparse_categorical_crossentropy', metrics=['acc'])
+                    loss='sparse_categorical_crossentropy', metrics=metrics_list)
 
     history1 = model1.fit(x = train_dataset,
                          validation_data= val_dataset,
@@ -71,7 +72,7 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size):
 
     model2 = Inception(input_size, num_classes)
     model2.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5),
-                    loss='sparse_categorical_crossentropy', metrics=['acc'])
+                    loss='sparse_categorical_crossentropy', metrics=metrics_list)
 
     history2 = model2.fit(x = train_dataset,
                          validation_data= val_dataset,
@@ -88,7 +89,7 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size):
 
     model3 = Xception(input_size, num_classes)
     model3.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5), 
-                    loss='sparse_categorical_crossentropy', metrics=['acc'])
+                    loss='sparse_categorical_crossentropy', metrics=metrics_list)
 
     history3 = model3.fit(x=train_dataset,
                          validation_data= val_dataset,
@@ -131,10 +132,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df = get_training_dataset(args.path)
-    df = kFold(df)
-
+    df = kFold(df)    
 
     for i in range(1,5):
-        train(i, df, args.batch_size, args.batch_size, args.num_epochs, args.num_classes, args.input_size)
+        train(i, df, args.batch_size, args.batch_size, args.num_epochs, args.num_classes, args.input_size, metrics_list)
 
 
