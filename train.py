@@ -1,17 +1,18 @@
+from gc import callbacks
 import os
 import argparse
-from tensorflow.keras import optimizers
+from tensorflow.keras import optimizers, losses
 import tensorflow as tf
 from sklearn.metrics import classification_report
 from keras.utils import np_utils
 from utils.metrics import *
+from tensorflow.keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 
 from utils.model import DenseNet, Inception, Xception
 from utils.ensemble_utils import doFusion
-from utils.data_pipeline import parse_function, encode_y
+from utils.data_pipeline import INPUT_DIMS, augment, normalize, parse_function, encode_y
 from utils.generate_dataset import get_training_dataset, kFold
 from utils.model_eval import predict, compute_metrics
-from utils.model_utils import save_model
 
 
 def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, metrics_list):
@@ -36,12 +37,15 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, me
                       .cache()
                       .shuffle(buffer_size=n_train)
                       .map(parse_function, num_parallel_calls=AUTOTUNE)
+                      .map(augment, num_parallel_calls=AUTOTUNE)
+                      .map(normalize, num_parallel_calls=AUTOTUNE)
                       .batch(train_batch)
                       .repeat()
                       .prefetch(buffer_size=AUTOTUNE)
                     )
     val_dataset = (val
-                    .map(parse_function)
+                    .map(parse_function, num_parallel_calls=AUTOTUNE)
+                    .map(normalize, num_parallel_calls=AUTOTUNE)
                     .batch(val_batch)
                     .prefetch(buffer_size=AUTOTUNE)
                   )
@@ -49,56 +53,75 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, me
     steps_per_epoch = n_train // train_batch
     validation_steps = n_val // val_batch
 
+    earlystopping = EarlyStopping(
+      monitor='val_loss', patience=5, verbose=0, mode='auto',
+      baseline=None, restore_best_weights=False) 
+
     print()
     print('DenseNet-169:')
     print()
 
+    model1_checkpoint = ModelCheckpoint(filepath='saved_models/'+'DenseNet-169',
+                                        monitor='val_cat_accuracy',
+                                        save_best_only = True,
+                                        save_weights_only  = True)
+    model1_logger = CSVLogger('DenseNet-169.log')
+
     model1 = DenseNet(input_size, num_classes)
     model1.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5), 
-                    loss='sparse_categorical_crossentropy', metrics=metrics_list)
+                    loss=losses.SparseCategoricalCrossentropy(), 
+                    metrics=metrics_list, callbacks=[model1_logger, earlystopping, model1_checkpoint])
 
-    history1 = model1.fit(x = train_dataset,
+    model1.fit(x = train_dataset,
                          validation_data= val_dataset,
                          epochs=NUM_EPOCHS,
                          steps_per_epoch=steps_per_epoch,
                          validation_steps=validation_steps
                          )
-                         
-    save_model(model1, "DenseNet-169", history1)
 
     print()
     print('InceptionV3:')
     print()
 
-    model2 = Inception(input_size, num_classes)
-    model2.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5),
-                    loss='sparse_categorical_crossentropy', metrics=metrics_list)
+    model2_checkpoint = ModelCheckpoint(filepath='saved_models/'+'InceptionV3',
+                                        monitor='val_cat_accuracy',
+                                        save_best_only = True,
+                                        save_weights_only  = True)
+    model2_logger = CSVLogger('InceptionV3.log')
 
-    history2 = model2.fit(x = train_dataset,
+    model2 = Inception(input_size, num_classes)    
+    model2.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5),
+                    loss=losses.SparseCategoricalCrossentropy(), 
+                    metrics=metrics_list, callbacks=[model2_logger, earlystopping, model2_checkpoint])
+
+    model2.fit(x = train_dataset,
                          validation_data= val_dataset,
                          epochs=NUM_EPOCHS,
                          steps_per_epoch=steps_per_epoch,
                          validation_steps=validation_steps
                          )
-
-    save_model(model2, "InceptionV3", history2)
 
     print()
     print('Xception:')
     print()
 
+    model3_checkpoint = ModelCheckpoint(filepath='saved_models/'+'Xception',
+                                        monitor='val_cat_accuracy',
+                                        save_best_only = True,
+                                        save_weights_only  = True)
+    model3_logger = CSVLogger('Xception.log')
+
     model3 = Xception(input_size, num_classes)
     model3.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5), 
-                    loss='sparse_categorical_crossentropy', metrics=metrics_list)
+                    loss=losses.SparseCategoricalCrossentropy(), 
+                    metrics=metrics_list, callbacks=[model3_logger, earlystopping, model3_checkpoint])
 
-    history3 = model3.fit(x=train_dataset,
+    model3.fit(x=train_dataset,
                          validation_data= val_dataset,
                          epochs=NUM_EPOCHS,
                          steps_per_epoch=steps_per_epoch,
                          validation_steps=validation_steps
                          )
-
-    save_model(model3, "Xception", history3)
 
     print("BASE LEARNERS ACCURACY-----------1.DENSENET 2.INCEPTION 3.XCEPTION")
 
@@ -128,13 +151,13 @@ if __name__ == "__main__":
     parser.add_argument('--num_epochs', type=int, default=20, help='Number of Epochs of training')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size for train and val')
     parser.add_argument('--num_classes', type=int, default=6, help='number of network outputs')
-    parser.add_argument('--input_size', type=int, default=128, help='input size of the image')
     args = parser.parse_args()
 
+    os.makedirs('saved_models', exist_ok=True)
     df = get_training_dataset(args.path)
     df = kFold(df)    
 
     for i in range(1,5):
-        train(i, df, args.batch_size, args.batch_size, args.num_epochs, args.num_classes, args.input_size, metrics_list)
+        train(i, df, args.batch_size, args.batch_size, args.num_epochs, args.num_classes, INPUT_DIMS, metrics_list)
 
 

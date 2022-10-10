@@ -1,8 +1,8 @@
 from tensorflow.keras import layers, applications, models
 
 
-def DenseNet(input_size, num_classes):
-  input_shape = (input_size, input_size, 3)
+def DenseNet(input_dims, num_classes):
+  input_shape = (input_dims[0], input_dims[1], 3)
   densenet_model = applications.DenseNet169(input_shape=input_shape,
                                             include_top=False,
                                             weights="imagenet"
@@ -20,8 +20,8 @@ def DenseNet(input_size, num_classes):
   
   return model
 
-def Inception(input_size, num_classes):
-  input_shape = (input_size, input_size, 3)
+def Inception(input_dims, num_classes):
+  input_shape = (input_dims[0], input_dims[1], 3)
   pre_trained_model2 = applications.InceptionV3(input_shape=input_shape,
                                                 include_top = False,
                                                 weights='imagenet')
@@ -38,8 +38,8 @@ def Inception(input_size, num_classes):
   
   return model
 
-def Xception(input_size, num_classes):
-  input_shape = (input_size, input_size, 3)
+def Xception(input_dims, num_classes):
+  input_shape = (input_dims[0], input_dims[1], 3)
   pre_trained_model = applications.Xception(input_shape = input_shape, 
                                             include_top=False,
                                             weights="imagenet")
