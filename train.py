@@ -1,30 +1,28 @@
-from gc import callbacks
 import os
 import argparse
 from tensorflow.keras import optimizers, losses
 import tensorflow as tf
 from sklearn.metrics import classification_report
 from keras.utils import np_utils
-from utils.metrics import *
 from tensorflow.keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 
 from utils.model import DenseNet, Inception, Xception
 from utils.ensemble_utils import doFusion
 from utils.data_pipeline import INPUT_DIMS, augment, normalize, parse_function, encode_y
 from utils.generate_dataset import get_training_dataset, kFold
-from utils.model_eval import predict, compute_metrics
+from utils.model_eval import predict, compute_metrics, metrics_list
 
 
 def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, metrics_list):
 
     print(f"---------------------------------------FOLD NO {i}----------------------------------")
-    
+
     dfTrain = df[df['kfold']!=i]
     dfVal = df[(df['kfold']==i)]
  
     y_true_val = dfVal['class'].apply(encode_y).to_numpy()
+    y_OHE_val = np_utils.to_categorical(y_true_val) # one hot encoded
 
-    
     n_val = len(dfVal)
     n_train = len(dfTrain)
 
@@ -69,7 +67,7 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, me
 
     model1 = DenseNet(input_size, num_classes)
     model1.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5), 
-                    loss=losses.SparseCategoricalCrossentropy(), 
+                    loss=losses.CategoricalCrossentropy(), 
                     metrics=metrics_list, callbacks=[model1_logger, earlystopping, model1_checkpoint])
 
     model1.fit(x = train_dataset,
@@ -91,7 +89,7 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, me
 
     model2 = Inception(input_size, num_classes)    
     model2.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5),
-                    loss=losses.SparseCategoricalCrossentropy(), 
+                    loss=losses.CategoricalCrossentropy(), 
                     metrics=metrics_list, callbacks=[model2_logger, earlystopping, model2_checkpoint])
 
     model2.fit(x = train_dataset,
@@ -113,7 +111,7 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, me
 
     model3 = Xception(input_size, num_classes)
     model3.compile(optimizer = optimizers.RMSprop(learning_rate=2e-5), 
-                    loss=losses.SparseCategoricalCrossentropy(), 
+                    loss=losses.CategoricalCrossentropy(), 
                     metrics=metrics_list, callbacks=[model3_logger, earlystopping, model3_checkpoint])
 
     model3.fit(x=train_dataset,
@@ -133,10 +131,12 @@ def train(i, df, train_batch, val_batch, NUM_EPOCHS, num_classes, input_size, me
     compute_metrics("InceptionV3", y_true_val, preds2)
     compute_metrics("Xception", y_true_val, preds3)
 
-    y_OHE = np_utils.to_categorical(y_true_val) # one hot encoded
-    ensem_preds = doFusion(preds1, preds2, preds3, y_OHE, num_classes)
+    
+    ensem_preds = doFusion(preds1, preds2, preds3, y_OHE_val, num_classes)
 
+    print()
     print('Ensembled:')
+    print()
 
     print(classification_report(y_true_val, ensem_preds, digits=4))
 

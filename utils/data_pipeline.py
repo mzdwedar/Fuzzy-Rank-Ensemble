@@ -2,6 +2,7 @@ import tensorflow as tf
 import albumentations as A
 import cv2
 import numpy as np
+from keras.utils import np_utils
 
 
 TARGET_ASPECT_RATIO = 1.75
@@ -35,6 +36,15 @@ def resize(input_image):
   return transform(image=input_image)['image']
 
 def encode_y(y):
+  '''
+  encode the class name to integer literal[0, 1, 2, 3, 4, 5]
+
+  args
+    y: str represents one of the six classes
+  
+  returns
+    integer literal
+  '''
   if(y=='NILM'):
     return 0
   elif(y=='ASC-US'):
@@ -47,6 +57,18 @@ def encode_y(y):
     return 4
   else:
     return 5
+  
+def OHE(code):
+  '''
+  transform the integr to one-hot encoded
+
+  args
+    code: integer literal[0, 1, 2, 3, 4, 5]
+  
+  returns
+    one hot encoded ndarray
+  '''
+  return np_utils(code, num_clasess=6)
 
 with tf.device('/cpu:0'):
   @tf.function
@@ -74,5 +96,6 @@ with tf.device('/cpu:0'):
     input_image = resize(input_image)
 
     label = encode_y(datapoint[1])
-
+    label = OHE(label)
+    
     return input_image, label

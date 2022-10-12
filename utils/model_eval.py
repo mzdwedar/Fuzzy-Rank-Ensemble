@@ -1,23 +1,53 @@
 import numpy as np
+import tensorflow as tf
+import tensorflow_addons as tfa
+from tensorflow.keras import backend as K
 
-from sklearn.metrics import confusion_matrix , accuracy_score, roc_auc_score
-from sklearn.metrics import precision_score, recall_score, f1_score
+
+metrics_list = [tf.keras.metrics.CategoricalAccuracy(name='cat_accuracy'),
+                tfa.metrics.F1Score(num_classes=6, threshold=None, average='macro', name = 'f1_score'),
+                ]
 
 def compute_metrics(model_name, Y, preds):
+  '''
+  compute accuracy, specificity, recall, F1 Score, and AUC
+
+  args
+    model_name
+    Y: grond truth labels
+    preds: Numpy array(s) of predictions.
+  '''
+
+  cat_acc = tf.keras.metrics.CategoricalAccuracy(name='cat_accuracy')
+  f1score = tfa.metrics.F1Score(num_classes=6, threshold=None, average='macro', name = 'f1_score')
+  recall = tf.keras.metrics.Recall(name='sensitivity/recall')
+  auc = tf.keras.metrics.AUC(curve='ROC', name='AUC', multi_label=True, num_labels=6)
+  specificity = tf.keras.metrics.SpecificityAtSensitivity(0.5)
+
   y_preds=[]
 
   for pred in preds: 
     y_preds.append(np.argmax(pred))
 
-  print(f'{model_name} Accuracy Score: ',accuracy_score(Y,y_preds))
-  n = len(precision_score(Y,y_preds , average= None))
-  print(f'{model_name} Precision Score(Class wise): ',precision_score(Y, y_preds, average=None), " mean- " , sum(precision_score(Y, y_preds, average= None ))/n)
-  print(f'{model_name} Recall Score(Class wise): ',recall_score(Y, y_preds, average=None), " mean- " , sum(recall_score(Y, y_preds, average= None ))/n)
-  print(f'{model_name} F1 Score(Class wise): ',f1_score(Y, y_preds, average=None), " mean- " , sum(f1_score(Y, y_preds, average= None))/n)
-  print(f'{model_name} Conf Matrix Score(Class wise):\n ',confusion_matrix(Y, y_preds))    
+  print(f'{model_name} Accuracy Score: ',cat_acc(Y, y_preds).numpy())
+  print(f'{model_name} specificity Score: ', specificity(Y, y_preds))
+  print(f'{model_name} Recall Score: ', recall(Y, y_preds).numpy())
+  print(f'{model_name} F1 Score: ',f1score(Y, y_preds).numpy()) 
+  print(f'{model_name} AUC: ',auc(Y, y_preds).numpy()) 
 
 def predict(model, dataset, num_examples, batch_size):
+  '''
+  Generates output predictions for the input.
+
+  args
+    model: tf.keras.model
+    dataset: tf.data (X, y)
+    num_examples: size of the dataset
+    batch_size: an argument for model.predict
   
+  returns
+    Numpy array(s) of predictions.
+  '''
   ds = dataset.unbatch()
   ds = ds.batch(num_examples)  
   
